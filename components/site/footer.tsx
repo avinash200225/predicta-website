@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/site/logo";
+import { CONTACT_EMAIL } from "@/lib/contact";
 
 const COLUMNS = [
   {
@@ -31,6 +32,12 @@ export function Footer() {
               Predicta turns live sports into a continuous stream of short-duration prediction
               moments.
             </p>
+            <a
+              href={`mailto:${CONTACT_EMAIL}`}
+              className="mt-4 inline-block text-[13px] font-medium text-chalk-muted transition-colors hover:text-flare"
+            >
+              {CONTACT_EMAIL}
+            </a>
           </div>
           <div className="grid grid-cols-2 gap-10 sm:gap-16">
             {COLUMNS.map((col) => (
