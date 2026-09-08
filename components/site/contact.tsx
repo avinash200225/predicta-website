@@ -2,34 +2,47 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Check, Mail } from "lucide-react";
+import { ArrowRight, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CONTACT_EMAIL } from "@/lib/contact";
+import { CONTACT_ACCESS_KEY, CONTACT_ENDPOINT } from "@/lib/contact";
 import { cn } from "@/lib/utils";
+
+type State = "idle" | "sending" | "sent" | "error";
+
+const inputClass = cn(
+  "focus-ring mt-2 w-full rounded-xl border border-line bg-ink-900 px-3.5 py-3 text-[14px] text-chalk",
+  "placeholder:text-chalk-faint focus:border-flare/60",
+);
 
 export function Contact() {
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
-  const [sent, setSent] = useState(false);
+  const [message, setMessage] = useState("");
+  const [botField, setBotField] = useState("");
+  const [state, setState] = useState<State>("idle");
 
-  const compose = () => {
-    const subject = company
-      ? `Predicta demo request — ${company}`
-      : "Predicta demo request";
-    const body = [
-      "Hi Avinash,",
-      "",
-      "I'd like to see Nanobetting on a live game.",
-      "",
-      `Company: ${company || "—"}`,
-      `Reply to: ${email}`,
-      "",
-    ].join("\n");
-    window.location.href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(
-      subject,
-    )}&body=${encodeURIComponent(body)}`;
-    setSent(true);
-  };
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (botField) return; // honeypot: silently drop bots
+    setState("sending");
+    try {
+      const res = await fetch(CONTACT_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          access_key: CONTACT_ACCESS_KEY,
+          subject: company ? `Predicta demo request — ${company}` : "Predicta demo request",
+          from_name: "Predicta website",
+          email,
+          company: company || "—",
+          message: message || "(no message)",
+        }),
+      });
+      setState(res.ok ? "sent" : "error");
+    } catch {
+      setState("error");
+    }
+  }
 
   return (
     <section id="contact" className="border-t border-line-soft py-20 lg:py-28">
@@ -53,28 +66,11 @@ export function Contact() {
               </h2>
               <p className="mt-4 max-w-md text-[15px] leading-relaxed text-chalk-muted">
                 Walk through the product with our team and see how moment-level markets sit inside
-                a live game.
+                a live game. Tell us a little about you and we&apos;ll be in touch.
               </p>
-
-              <a
-                href={`mailto:${CONTACT_EMAIL}`}
-                className="focus-ring mt-7 inline-flex items-center gap-3 rounded-xl border border-line bg-ink-900 px-4 py-3 transition-colors hover:border-flare/50"
-              >
-                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-line bg-ink-850">
-                  <Mail className="h-4 w-4 text-flare" strokeWidth={1.9} />
-                </span>
-                <span>
-                  <span className="block text-[10px] font-bold uppercase tracking-[0.16em] text-chalk-faint">
-                    Or email us directly
-                  </span>
-                  <span className="mt-0.5 block text-[14px] font-semibold text-chalk">
-                    {CONTACT_EMAIL}
-                  </span>
-                </span>
-              </a>
             </div>
 
-            {sent ? (
+            {state === "sent" ? (
               <motion.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -83,26 +79,13 @@ export function Contact() {
                 <span className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-gain/40 bg-gain-soft">
                   <Check className="h-5 w-5 text-gain" strokeWidth={2.5} />
                 </span>
-                <p className="mt-4 text-[15px] font-semibold text-chalk">Your email is ready</p>
-                <p className="mt-1.5 text-[13px] leading-relaxed text-chalk-muted">
-                  We opened a pre-filled message in your mail app. If nothing appeared, write to{" "}
-                  <a
-                    href={`mailto:${CONTACT_EMAIL}`}
-                    className="font-semibold text-flare underline underline-offset-2"
-                  >
-                    {CONTACT_EMAIL}
-                  </a>
-                  .
+                <p className="mt-4 text-[15px] font-semibold text-chalk">Request received</p>
+                <p className="mt-1.5 text-[13px] text-chalk-muted">
+                  We&apos;ll be in touch to schedule your walkthrough.
                 </p>
               </motion.div>
             ) : (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  compose();
-                }}
-                className="card-soft space-y-3 p-5"
-              >
+              <form onSubmit={submit} className="card-soft space-y-3 p-5">
                 <div>
                   <label htmlFor="email" className="eyebrow">
                     Work email
@@ -114,10 +97,7 @@ export function Contact() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@sportsbook.com"
-                    className={cn(
-                      "focus-ring mt-2 w-full rounded-xl border border-line bg-ink-900 px-3.5 py-3 text-[14px] text-chalk",
-                      "placeholder:text-chalk-faint focus:border-flare/60",
-                    )}
+                    className={inputClass}
                   />
                 </div>
                 <div>
@@ -129,16 +109,58 @@ export function Contact() {
                     value={company}
                     onChange={(e) => setCompany(e.target.value)}
                     placeholder="Company name"
-                    className="focus-ring mt-2 w-full rounded-xl border border-line bg-ink-900 px-3.5 py-3 text-[14px] text-chalk placeholder:text-chalk-faint focus:border-flare/60"
+                    className={inputClass}
                   />
                 </div>
-                <Button type="submit" size="block" className="mt-1">
-                  Request demo
-                  <ArrowRight className="h-4 w-4" />
+                <div>
+                  <label htmlFor="message" className="eyebrow">
+                    Message <span className="normal-case tracking-normal">(optional)</span>
+                  </label>
+                  <textarea
+                    id="message"
+                    rows={3}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="What would you like to see?"
+                    className={cn(inputClass, "resize-none")}
+                  />
+                </div>
+
+                {/* honeypot — hidden from people, filled by bots */}
+                <input
+                  type="text"
+                  name="botcheck"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  aria-hidden
+                  value={botField}
+                  onChange={(e) => setBotField(e.target.value)}
+                  className="hidden"
+                />
+
+                <Button type="submit" size="block" className="mt-1" disabled={state === "sending"}>
+                  {state === "sending" ? (
+                    <>
+                      Sending
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    </>
+                  ) : (
+                    <>
+                      Request demo
+                      <ArrowRight className="h-4 w-4" />
+                    </>
+                  )}
                 </Button>
-                <p className="text-center text-[10px] leading-relaxed text-chalk-faint">
-                  Opens a pre-filled email to {CONTACT_EMAIL}.
-                </p>
+
+                {state === "error" ? (
+                  <p className="text-center text-[11px] leading-relaxed text-loss">
+                    Something went wrong sending that. Please try again in a moment.
+                  </p>
+                ) : (
+                  <p className="text-center text-[10px] leading-relaxed text-chalk-faint">
+                    We only use your details to arrange the walkthrough.
+                  </p>
+                )}
               </form>
             )}
           </div>
